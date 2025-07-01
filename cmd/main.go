@@ -12,6 +12,11 @@ func main() {
 	e := echo.New()
 	newApi := api.NewApi(newApp, e) // new api
 
+	err := newApp.LoadData()
+	if err != nil {
+		panic(err)
+	}
+
 	newApi.RegisterFunctions()
 	newApi.StartService()
 }

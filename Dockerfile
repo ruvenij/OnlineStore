@@ -22,7 +22,9 @@ WORKDIR /root/
 
 # Copy binary and CSV files from builder
 COPY --from=builder /app/main .
-COPY --from=builder /app/internal/config/config.json ./config.json
+COPY --from=builder /app/internal/config/config.json ./internal/config/config.json
+COPY --from=builder /app/internal/data/static/users.csv ./internal/data/static/users.csv
+COPY --from=builder /app/internal/data/static/products.csv ./internal/data/static/products.csv
 
 EXPOSE 8080
 CMD ["./main"]

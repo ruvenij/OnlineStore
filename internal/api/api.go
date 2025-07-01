@@ -74,7 +74,7 @@ func (api *Api) GetProducts(c echo.Context) error {
 	limitInt, pageInt, err := validateGetProductsRequest(limit, page)
 	if err != nil {
 		logrus.WithError(err).Error("Validation failed for GetProducts request")
-		return c.JSON(http.StatusBadRequest, err.Error())
+		return c.JSON(http.StatusBadRequest, map[string]string{"Error": err.Error()})
 	}
 
 	// process the request
@@ -85,7 +85,7 @@ func (api *Api) GetProducts(c echo.Context) error {
 	)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to process get products request")
-		return c.JSON(http.StatusInternalServerError, err.Error())
+		return c.JSON(http.StatusInternalServerError, map[string]string{"Error": err.Error()})
 	}
 
 	logrus.Debug("Retrieved result ", result)
@@ -96,19 +96,19 @@ func (api *Api) AddProduct(c echo.Context) error {
 	req := new(request.ProductDetails)
 	if err := c.Bind(req); err != nil {
 		logrus.WithError(err).Error("Failed to bind AddProduct request")
-		return c.JSON(http.StatusBadRequest, errors.New("Invalid incoming json body for product "))
+		return c.JSON(http.StatusBadRequest, map[string]string{"Error": err.Error()})
 	}
 
 	// validate the request
 	product, err := api.validateAddProductRequest(req)
 	if err != nil {
 		logrus.WithError(err).Error("Validation failed for AddProduct request")
-		return c.JSON(http.StatusBadRequest, err.Error())
+		return c.JSON(http.StatusBadRequest, map[string]string{"Error": err.Error()})
 	}
 
 	// process the request
 	api.app.AddProduct(product)
-	return c.JSON(http.StatusOK, "success")
+	return c.JSON(http.StatusOK, map[string]string{"message": "success"})
 }
 
 func (api *Api) GetOrder(c echo.Context) error {
@@ -116,13 +116,14 @@ func (api *Api) GetOrder(c echo.Context) error {
 
 	if orderId == "" {
 		logrus.WithField("order_id", orderId).Error("Order Id is required")
-		return c.JSON(http.StatusBadRequest, errors.New("Invalid order id "))
+		err := errors.New("Order Id is required ")
+		return c.JSON(http.StatusBadRequest, map[string]string{"Error": err.Error()})
 	}
 
 	order, err := api.app.GetOrder(orderId)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get order")
-		return c.JSON(http.StatusInternalServerError, err.Error())
+		return c.JSON(http.StatusInternalServerError, map[string]string{"Error": err.Error()})
 	}
 
 	return c.JSON(http.StatusOK, order)
@@ -132,7 +133,7 @@ func (api *Api) AddNewOrder(c echo.Context) error {
 	var req request.Order
 	if err := c.Bind(&req); err != nil {
 		logrus.WithError(err).Error("Failed to bind AddNewOrder request")
-		return c.JSON(http.StatusBadRequest, errors.New("Invalid incoming json body for order "))
+		return c.JSON(http.StatusBadRequest, map[string]string{"Error": err.Error()})
 	}
 
 	user := c.Get("user").(*jwt.Token)
@@ -142,24 +143,38 @@ func (api *Api) AddNewOrder(c echo.Context) error {
 	order, err := api.validateAndGetOrder(&req)
 	if err != nil {
 		logrus.WithError(err).Error("Validation failed for AddNewOrder request")
-		return c.JSON(http.StatusBadRequest, err.Error())
+		return c.JSON(http.StatusBadRequest, map[string]string{"Error": err.Error()})
 	}
 
-	return api.app.AddOrder(order)
+	err = api.app.AddOrder(order)
+	if err != nil {
+		logrus.WithError(err).Error("Failed to add order")
+		return c.JSON(http.StatusInternalServerError, map[string]string{"Error": err.Error()})
+	}
+
+	return c.JSON(http.StatusOK, map[string]string{"message": "success"})
 }
 
 func validateGetProductsRequest(limitStr string, pageStr string) (int, int, error) {
-	limit, err := strconv.Atoi(limitStr)
-	if err != nil {
-		return 0, 0, err
+	limit := 10
+	page := 1
+	var err error
+
+	if limitStr != "" {
+		limit, err = strconv.Atoi(limitStr)
+		if err != nil {
+			return 0, 0, err
+		}
 	}
 
-	page, err := strconv.Atoi(pageStr)
-	if err != nil {
-		return 0, 0, err
+	if pageStr != "" {
+		page, err = strconv.Atoi(pageStr)
+		if err != nil {
+			return 0, 0, err
+		}
 	}
 
-	return limit, page, nil
+	return limit, page, err
 }
 
 func (api *Api) validateAddProductRequest(input *request.ProductDetails) (*model.ProductDetails, error) {
@@ -184,17 +199,17 @@ func (api *Api) validateAddProductRequest(input *request.ProductDetails) (*model
 func (api *Api) Login(c echo.Context) error {
 	req := new(request.UserLogin)
 	if err := c.Bind(req); err != nil {
-		return c.JSON(http.StatusBadRequest, errors.New("Invalid incoming login request "))
+		return c.JSON(http.StatusBadRequest, map[string]string{"Error": err.Error()})
 	}
 
 	err := api.isValidLoginRequest(req)
 	if err != nil {
-		return c.JSON(http.StatusBadRequest, err.Error())
+		return c.JSON(http.StatusBadRequest, map[string]string{"Error": err.Error()})
 	}
 
 	token, err := api.app.GenerateJWTToken(req.Username, req.Password)
 	if err != nil {
-		return c.JSON(http.StatusInternalServerError, err.Error())
+		return c.JSON(http.StatusInternalServerError, map[string]string{"Error": err.Error()})
 	}
 
 	return c.JSON(http.StatusOK, &request.LoginResponse{
@@ -233,12 +248,12 @@ func (api *Api) UpdateOrderStatus(c echo.Context) error {
 	// validate the input
 	orderDtl, err := validateUpdateOrderRequest(orderId, status)
 	if err != nil {
-		return c.JSON(http.StatusBadRequest, err.Error())
+		return c.JSON(http.StatusBadRequest, map[string]string{"Error": err.Error()})
 	}
 
 	err = api.app.UpdateOrderStatus(orderId, orderDtl.Status)
 	if err != nil {
-		return c.JSON(http.StatusInternalServerError, err.Error())
+		return c.JSON(http.StatusInternalServerError, map[string]string{"Error": err.Error()})
 	}
 
 	return c.JSON(http.StatusOK, "success")

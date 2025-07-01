@@ -8,9 +8,10 @@ import (
 )
 
 type Config struct {
-	Port   int    `json:"port"`
-	Name   string `json:"name"`
-	Secret string `json:"secret"`
+	Port         int    `json:"port"`
+	Name         string `json:"name"`
+	Secret       string `json:"secret"`
+	DataFilePath string `json:"dataFilePath"`
 }
 
 var once sync.Once
@@ -19,7 +20,7 @@ var err error
 
 func GetConfig() *Config {
 	once.Do(func() {
-		instance, err = loadConfig("config.json")
+		instance, err = loadConfig("./internal/config/config.json")
 		if err != nil {
 			logrus.Fatal(err)
 		}

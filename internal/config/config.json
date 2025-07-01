@@ -1,5 +1,6 @@
 {
   "Port": 8080,
   "Name": "online_store",
-  "Secret": "secret"
+  "Secret": "secret",
+  "DataFilePath": "./internal/data/static"
 }
